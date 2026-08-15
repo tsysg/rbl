@@ -135,18 +135,17 @@ local RunService = game:GetService("RunService")
 
 game:GetService("StarterGui"):SetCore("SendNotification", { 
 	Title = "FLY GUI V3";
-	Text = "FIXED BY AI";
+	Text = "FIXED DIRECTION";
 	Icon = "rbxthumb://type=Asset&id=5107182114&w=150&h=150"
 })
 
 Frame.Active = true
 Frame.Draggable = true
 
--- Khai báo bộ phím điều khiển
 local ctrl = {f = 0, b = 0, l = 0, r = 0}
 local isUpPressed, isDownPressed = false, false
 
--- Nhận diện phím bấm
+-- Nhận diện phím chuẩn hướng
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode == Enum.KeyCode.W then ctrl.f = 1 end
@@ -162,13 +161,14 @@ UserInputService.InputEnded:Connect(function(input)
 	if input.KeyCode == Enum.KeyCode.D then ctrl.r = 0 end
 end)
 
--- Xử lý nút ON/OFF FLY
 onof.MouseButton1Down:Connect(function()
 	if nowe then
 		nowe = false
 		if speaker.Character and speaker.Character:FindFirstChildOfClass("Humanoid") then
 			speaker.Character.Humanoid.PlatformStand = false
-			speaker.Character.Animate.Disabled = false
+			if speaker.Character:FindFirstChild("Animate") then
+				speaker.Character.Animate.Disabled = false
+			end
 		end
 	else
 		nowe = true
@@ -184,7 +184,6 @@ onof.MouseButton1Down:Connect(function()
 			char.Animate.Disabled = true
 		end
 
-		-- Tạo hiệu ứng vật lý để bay
 		local bg = Instance.new("BodyGyro")
 		bg.P = 9e4
 		bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
@@ -202,17 +201,19 @@ onof.MouseButton1Down:Connect(function()
 				
 				local camera = workspace.CurrentCamera
 				local moveDir = hum.MoveDirection
-				local flyVector = Vector3.new(0, 0, 0)
 				local currentSpeed = speeds * 50
+				
+				-- Sửa công thức vector theo chuẩn Camera
+				local forwardVector = camera.CFrame.LookVector
+				local rightVector = camera.CFrame.RightVector
+				local flyVector = Vector3.new(0, 0, 0)
 
-				-- Nếu có di chuyển bằng phím WASD hoặc Joystick trên Điện Thoại
 				if ctrl.f + ctrl.b ~= 0 or ctrl.l + ctrl.r ~= 0 then
-					flyVector = (camera.CFrame.LookVector * (ctrl.f + ctrl.b)) + ((camera.CFrame * CFrame.new(ctrl.l + ctrl.r, (ctrl.f + ctrl.b) * 0.2, 0).Position) - camera.CFrame.Position)
+					flyVector = (forwardVector * (ctrl.f + ctrl.b)) + (rightVector * (ctrl.l + ctrl.r))
 				elseif moveDir.Magnitude > 0 then
 					flyVector = camera.CFrame:VectorToWorldSpace(Vector3.new(moveDir.X, 0, moveDir.Z))
 				end
 
-				-- Áp dụng tốc độ bay + Nút Up/Down
 				local yVelocity = 0
 				if isUpPressed then yVelocity = currentSpeed / 1.5 end
 				if isDownPressed then yVelocity = -currentSpeed / 1.5 end
@@ -221,7 +222,6 @@ onof.MouseButton1Down:Connect(function()
 				bg.cframe = camera.CFrame
 			end
 
-			-- Thu dọn khi tắt
 			bg:Destroy()
 			bv:Destroy()
 			if hum then hum.PlatformStand = false end
@@ -230,7 +230,6 @@ onof.MouseButton1Down:Connect(function()
 	end
 end)
 
--- Xử lý nút UP/DOWN
 up.MouseButton1Down:Connect(function() isUpPressed = true end)
 up.MouseButton1Up:Connect(function() isUpPressed = false end)
 up.MouseLeave:Connect(function() isUpPressed = false end)
@@ -239,7 +238,6 @@ down.MouseButton1Down:Connect(function() isDownPressed = true end)
 down.MouseButton1Up:Connect(function() isDownPressed = false end)
 down.MouseLeave:Connect(function() isDownPressed = false end)
 
--- Nút Tăng/Giảm tốc độ
 plus.MouseButton1Down:Connect(function()
 	speeds = speeds + 1
 	speed.Text = tostring(speeds)
@@ -256,7 +254,6 @@ mine.MouseButton1Down:Connect(function()
 	end
 end)
 
--- Sự kiện thu nhỏ / đóng GUI
 closebutton.MouseButton1Click:Connect(function()
 	nowe = false
 	main:Destroy()
@@ -288,7 +285,6 @@ mini2.MouseButton1Click:Connect(function()
 	closebutton.Position = UDim2.new(0, 0, -1, 27)
 end)
 
--- Tự động ngắt trạng thái khi nhân vật chết hoặc Respawn
 speaker.CharacterAdded:Connect(function()
 	nowe = false
 end)
