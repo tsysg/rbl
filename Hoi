@@ -73,32 +73,36 @@ if _G.FastAttack then
             RegisterHit:FireServer(BasePart, OthersEnemies)
         end
 
-        function FastAttack:AttackNearest()
-            local OthersEnemies = {}
-            local Part1 = ProcessEnemies(OthersEnemies, Enemies)
-            local Part2 = ProcessEnemies(OthersEnemies, Characters)
+     function FastAttack:AttackNearest()
+    local OthersEnemies = {}
+    local Part1 = ProcessEnemies(OthersEnemies, Enemies)
+    local Part2 = ProcessEnemies(OthersEnemies, Characters)
 
-            local character = Player.Character
-            if not character then
-                return
-            end
-            local equippedWeapon = character:FindFirstChildOfClass("Tool")
+    -- Nếu không có kẻ địch, thoát
+    if #OthersEnemies == 0 then return end
 
-            if equippedWeapon and equippedWeapon:FindFirstChild("LeftClickRemote") then
-                for _, enemyData in ipairs(OthersEnemies) do
-                    local enemy = enemyData[1]
-                    local direction = (enemy.HumanoidRootPart.Position - character:GetPivot().Position).Unit
-                    pcall(function()
-                        equippedWeapon.LeftClickRemote:FireServer(direction, 1)
-                    end)
-                end
-            elseif #OthersEnemies > 0 then
-                self:Attack(Part1 or Part2, OthersEnemies)
-            else
-                task.wait(0)
-            end
+    -- Chọn phần thân (BasePart) của con đầu tiên để làm điểm tham chiếu
+    local firstEnemy = OthersEnemies[1]
+    local basePart = firstEnemy[2]  -- Head hoặc HumanoidRootPart
+
+    local character = Player.Character
+    if not character then return end
+    local equippedWeapon = character:FindFirstChildOfClass("Tool")
+
+    if equippedWeapon and equippedWeapon:FindFirstChild("LeftClickRemote") then
+        -- Nếu là vũ khí có LeftClickRemote (ví dụ: Blox Fruit), gửi hướng đến từng con
+        for _, enemyData in ipairs(OthersEnemies) do
+            local enemy = enemyData[1]
+            local direction = (enemy.HumanoidRootPart.Position - character:GetPivot().Position).Unit
+            pcall(function()
+                equippedWeapon.LeftClickRemote:FireServer(direction, 1)
+            end)
         end
-
+    else
+        -- Gửi remote đánh một lần với toàn bộ danh sách OthersEnemies
+        self:Attack(basePart, OthersEnemies)
+    end
+end
         function FastAttack:BladeHits()
             local Equipped = IsAlive(Player.Character) and Player.Character:FindFirstChildOfClass("Tool")
             if Equipped and Equipped.ToolTip ~= "Gun" then
