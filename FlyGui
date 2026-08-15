@@ -135,17 +135,17 @@ local RunService = game:GetService("RunService")
 
 game:GetService("StarterGui"):SetCore("SendNotification", { 
 	Title = "FLY GUI V3";
-	Text = "FIXED DIRECTION";
+	Text = "CAMERA FLY FIXED";
 	Icon = "rbxthumb://type=Asset&id=5107182114&w=150&h=150"
 })
 
 Frame.Active = true
 Frame.Draggable = true
 
+-- Bộ phím bấm
 local ctrl = {f = 0, b = 0, l = 0, r = 0}
 local isUpPressed, isDownPressed = false, false
 
--- Nhận diện phím chuẩn hướng
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode == Enum.KeyCode.W then ctrl.f = 1 end
@@ -161,6 +161,7 @@ UserInputService.InputEnded:Connect(function(input)
 	if input.KeyCode == Enum.KeyCode.D then ctrl.r = 0 end
 end)
 
+-- Xử lý Bật / Tắt Fly
 onof.MouseButton1Down:Connect(function()
 	if nowe then
 		nowe = false
@@ -203,22 +204,25 @@ onof.MouseButton1Down:Connect(function()
 				local moveDir = hum.MoveDirection
 				local currentSpeed = speeds * 50
 				
-				-- Sửa công thức vector theo chuẩn Camera
-				local forwardVector = camera.CFrame.LookVector
-				local rightVector = camera.CFrame.RightVector
+				-- Tính toán hướng di chuyển dựa trên CFrame của Camera (Bao gồm cả trục Y nghiêng lên/xuống)
 				local flyVector = Vector3.new(0, 0, 0)
 
 				if ctrl.f + ctrl.b ~= 0 or ctrl.l + ctrl.r ~= 0 then
-					flyVector = (forwardVector * (ctrl.f + ctrl.b)) + (rightVector * (ctrl.l + ctrl.r))
+					-- PC: Di chuyển chính xác theo hướng ống kính Camera
+					flyVector = (camera.CFrame.LookVector * (ctrl.f + ctrl.b)) + (camera.CFrame.RightVector * (ctrl.l + ctrl.r))
 				elseif moveDir.Magnitude > 0 then
-					flyVector = camera.CFrame:VectorToWorldSpace(Vector3.new(moveDir.X, 0, moveDir.Z))
+					-- Mobile: Xoay hướng Joystick theo góc xoay ngang của Camera
+					local camRight = camera.CFrame.RightVector
+					local camForward = Vector3.new(camera.CFrame.LookVector.X, 0, camera.CFrame.LookVector.Z).Unit
+					flyVector = (camForward * -moveDir.Z) + (camRight * moveDir.X)
 				end
 
-				local yVelocity = 0
-				if isUpPressed then yVelocity = currentSpeed / 1.5 end
-				if isDownPressed then yVelocity = -currentSpeed / 1.5 end
+				-- Nếu muốn nâng/hạ độ cao thủ công bằng nút UP/DOWN trên UI
+				local extraY = 0
+				if isUpPressed then extraY = currentSpeed / 1.5 end
+				if isDownPressed then extraY = -currentSpeed / 1.5 end
 
-				bv.velocity = (flyVector * currentSpeed) + Vector3.new(0, yVelocity, 0)
+				bv.velocity = (flyVector * currentSpeed) + Vector3.new(0, extraY, 0)
 				bg.cframe = camera.CFrame
 			end
 
@@ -230,6 +234,7 @@ onof.MouseButton1Down:Connect(function()
 	end
 end)
 
+-- Sự kiện giữ nút UP/DOWN
 up.MouseButton1Down:Connect(function() isUpPressed = true end)
 up.MouseButton1Up:Connect(function() isUpPressed = false end)
 up.MouseLeave:Connect(function() isUpPressed = false end)
@@ -238,6 +243,7 @@ down.MouseButton1Down:Connect(function() isDownPressed = true end)
 down.MouseButton1Up:Connect(function() isDownPressed = false end)
 down.MouseLeave:Connect(function() isDownPressed = false end)
 
+-- Nút Tăng/Giảm tốc độ
 plus.MouseButton1Down:Connect(function()
 	speeds = speeds + 1
 	speed.Text = tostring(speeds)
@@ -254,6 +260,7 @@ mine.MouseButton1Down:Connect(function()
 	end
 end)
 
+-- Đóng / Thu nhỏ Menu
 closebutton.MouseButton1Click:Connect(function()
 	nowe = false
 	main:Destroy()
