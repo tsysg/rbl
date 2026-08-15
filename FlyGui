@@ -1,297 +1,260 @@
-local main = Instance.new("ScreenGui")
-local Frame = Instance.new("Frame")
-local up = Instance.new("TextButton")
-local down = Instance.new("TextButton")
-local onof = Instance.new("TextButton")
-local TextLabel = Instance.new("TextLabel")
-local plus = Instance.new("TextButton")
-local speed = Instance.new("TextLabel")
-local mine = Instance.new("TextButton")
-local closebutton = Instance.new("TextButton")
-local mini = Instance.new("TextButton")
-local mini2 = Instance.new("TextButton")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
 
-main.Name = "main"
-main.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-main.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local LocalPlayer = Players.LocalPlayer
+
+-- Xóa GUI cũ nếu đã tồn tại
+if CoreGui:FindFirstChild("FlyGuiNgocTien") then
+	CoreGui:FindFirstChild("FlyGuiNgocTien"):Destroy()
+end
+
+-- Tạo ScreenGui
+local main = Instance.new("ScreenGui")
+main.Name = "FlyGuiNgocTien"
+main.Parent = CoreGui
 main.ResetOnSpawn = false
 
-Frame.Parent = main
-Frame.BackgroundColor3 = Color3.fromRGB(163, 255, 137)
-Frame.BorderColor3 = Color3.fromRGB(103, 221, 213)
-Frame.Position = UDim2.new(0.100320168, 0, 0.379746825, 0)
-Frame.Size = UDim2.new(0, 190, 0, 57)
+-- Nút Bật/Tắt Menu hình tròn (Toggle Button)
+local ToggleBtn = Instance.new("TextButton")
+local ToggleCorner = Instance.new("UICorner")
 
-up.Name = "up"
-up.Parent = Frame
-up.BackgroundColor3 = Color3.fromRGB(79, 255, 152)
-up.Size = UDim2.new(0, 44, 0, 28)
-up.Font = Enum.Font.SourceSans
-up.Text = "UP"
-up.TextColor3 = Color3.fromRGB(0, 0, 0)
-up.TextSize = 14.000
+ToggleBtn.Name = "ToggleBtn"
+ToggleBtn.Parent = main
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ToggleBtn.Position = UDim2.new(0.02, 0, 0.4, 0)
+ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.Text = "FLY"
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+ToggleBtn.TextSize = 14
+ToggleBtn.Active = true
+ToggleBtn.Draggable = true
 
-down.Name = "down"
-down.Parent = Frame
-down.BackgroundColor3 = Color3.fromRGB(215, 255, 121)
-down.Position = UDim2.new(0, 0, 0.491228074, 0)
-down.Size = UDim2.new(0, 44, 0, 28)
-down.Font = Enum.Font.SourceSans
-down.Text = "DOWN"
-down.TextColor3 = Color3.fromRGB(0, 0, 0)
-down.TextSize = 14.000
+ToggleCorner.CornerRadius = UDim.new(1, 0)
+ToggleCorner.Parent = ToggleBtn
 
-onof.Name = "onof"
-onof.Parent = Frame
-onof.BackgroundColor3 = Color3.fromRGB(255, 249, 74)
-onof.Position = UDim2.new(0.702823281, 0, 0.491228074, 0)
-onof.Size = UDim2.new(0, 56, 0, 28)
-onof.Font = Enum.Font.SourceSans
-onof.Text = "fly"
-onof.TextColor3 = Color3.fromRGB(0, 0, 0)
-onof.TextSize = 14.000
+-- Frame Menu Chính
+local MainFrame = Instance.new("Frame")
+local FrameCorner = Instance.new("UICorner")
+local Title = Instance.new("TextLabel")
+local FlyToggleBtn = Instance.new("TextButton")
+local FlyBtnCorner = Instance.new("UICorner")
+local CloseBtn = Instance.new("TextButton")
 
-TextLabel.Parent = Frame
-TextLabel.BackgroundColor3 = Color3.fromRGB(242, 60, 255)
-TextLabel.Position = UDim2.new(0.469327301, 0, 0, 0)
-TextLabel.Size = UDim2.new(0, 100, 0, 28)
-TextLabel.Font = Enum.Font.SourceSans
-TextLabel.Text = "FLY GUI V3"
-TextLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-TextLabel.TextScaled = true
-TextLabel.TextSize = 14.000
-TextLabel.TextWrapped = true
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = main
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.Position = UDim2.new(0.35, 0, 0.35, 0)
+MainFrame.Size = UDim2.new(0, 220, 0, 90)
+MainFrame.Active = true
+MainFrame.Draggable = true
 
-plus.Name = "plus"
-plus.Parent = Frame
-plus.BackgroundColor3 = Color3.fromRGB(133, 145, 255)
-plus.Position = UDim2.new(0.231578946, 0, 0, 0)
-plus.Size = UDim2.new(0, 45, 0, 28)
-plus.Font = Enum.Font.SourceSans
-plus.Text = "+"
-plus.TextColor3 = Color3.fromRGB(0, 0, 0)
-plus.TextScaled = true
-plus.TextSize = 14.000
-plus.TextWrapped = true
+FrameCorner.CornerRadius = UDim.new(0, 8)
+FrameCorner.Parent = MainFrame
 
-speed.Name = "speed"
-speed.Parent = Frame
-speed.BackgroundColor3 = Color3.fromRGB(255, 85, 0)
-speed.Position = UDim2.new(0.468421042, 0, 0.491228074, 0)
-speed.Size = UDim2.new(0, 44, 0, 28)
-speed.Font = Enum.Font.SourceSans
-speed.Text = "1"
-speed.TextColor3 = Color3.fromRGB(0, 0, 0)
-speed.TextScaled = true
-speed.TextSize = 14.000
-speed.TextWrapped = true
+Title.Name = "Title"
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 12, 0, 5)
+Title.Size = UDim2.new(0, 160, 0, 25)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "Fly Gui Ngoc Tien"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 13
+Title.TextXAlignment = Enum.TextXAlignment.Left
 
-mine.Name = "mine"
-mine.Parent = Frame
-mine.BackgroundColor3 = Color3.fromRGB(123, 255, 247)
-mine.Position = UDim2.new(0.231578946, 0, 0.491228074, 0)
-mine.Size = UDim2.new(0, 45, 0, 29)
-mine.Font = Enum.Font.SourceSans
-mine.Text = "-"
-mine.TextColor3 = Color3.fromRGB(0, 0, 0)
-mine.TextScaled = true
-mine.TextSize = 14.000
-mine.TextWrapped = true
+CloseBtn.Name = "CloseBtn"
+CloseBtn.Parent = MainFrame
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.Position = UDim2.new(1, -25, 0, 5)
+CloseBtn.Size = UDim2.new(0, 20, 0, 20)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 70, 70)
+CloseBtn.TextSize = 14
 
-closebutton.Name = "Close"
-closebutton.Parent = Frame
-closebutton.BackgroundColor3 = Color3.fromRGB(225, 25, 0)
-closebutton.Font = Enum.Font.SourceSans
-closebutton.Size = UDim2.new(0, 45, 0, 28)
-closebutton.Text = "X"
-closebutton.TextSize = 30
-closebutton.Position = UDim2.new(0, 0, -1, 27)
+FlyToggleBtn.Name = "FlyToggleBtn"
+FlyToggleBtn.Parent = MainFrame
+FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+FlyToggleBtn.Position = UDim2.new(0.08, 0, 0.42, 0)
+FlyToggleBtn.Size = UDim2.new(0.84, 0, 0, 35)
+FlyToggleBtn.Font = Enum.Font.GothamBold
+FlyToggleBtn.Text = "Bật Fly"
+FlyToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+FlyToggleBtn.TextSize = 13
 
-mini.Name = "minimize"
-mini.Parent = Frame
-mini.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
-mini.Font = Enum.Font.SourceSans
-mini.Size = UDim2.new(0, 45, 0, 28)
-mini.Text = "-"
-mini.TextSize = 40
-mini.Position = UDim2.new(0, 44, -1, 27)
+FlyBtnCorner.CornerRadius = UDim.new(0, 6)
+FlyBtnCorner.Parent = FlyToggleBtn
 
-mini2.Name = "minimize2"
-mini2.Parent = Frame
-mini2.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
-mini2.Font = Enum.Font.SourceSans
-mini2.Size = UDim2.new(0, 45, 0, 28)
-mini2.Text = "+"
-mini2.TextSize = 40
-mini2.Position = UDim2.new(0, 44, -1, 57)
-mini2.Visible = false
+-- Bảng Tốc Độ & Bật Fly
+local FlyControlFrame = Instance.new("Frame")
+local ControlCorner = Instance.new("UICorner")
+local PlusBtn = Instance.new("TextButton")
+local MinusBtn = Instance.new("TextButton")
+local SpeedLabel = Instance.new("TextLabel")
 
-speeds = 1
-nowe = false
+FlyControlFrame.Name = "FlyControlFrame"
+FlyControlFrame.Parent = main
+FlyControlFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+FlyControlFrame.Position = UDim2.new(0.35, 0, 0.5, 0)
+FlyControlFrame.Size = UDim2.new(0, 220, 0, 45)
+FlyControlFrame.Visible = false
+FlyControlFrame.Active = true
+FlyControlFrame.Draggable = true
 
-local speaker = game:GetService("Players").LocalPlayer
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+ControlCorner.CornerRadius = UDim.new(0, 8)
+ControlCorner.Parent = FlyControlFrame
 
-game:GetService("StarterGui"):SetCore("SendNotification", { 
-	Title = "FLY GUI V3";
-	Text = "CAMERA FLY FIXED";
-	Icon = "rbxthumb://type=Asset&id=5107182114&w=150&h=150"
-})
+MinusBtn.Name = "MinusBtn"
+MinusBtn.Parent = FlyControlFrame
+MinusBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MinusBtn.Position = UDim2.new(0.08, 0, 0.2, 0)
+MinusBtn.Size = UDim2.new(0, 30, 0, 26)
+MinusBtn.Font = Enum.Font.GothamBold
+MinusBtn.Text = "-"
+MinusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinusBtn.TextSize = 14
 
-Frame.Active = true
-Frame.Draggable = true
+PlusBtn.Name = "PlusBtn"
+PlusBtn.Parent = FlyControlFrame
+PlusBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+PlusBtn.Position = UDim2.new(0.78, 0, 0.2, 0)
+PlusBtn.Size = UDim2.new(0, 30, 0, 26)
+PlusBtn.Font = Enum.Font.GothamBold
+PlusBtn.Text = "+"
+PlusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlusBtn.TextSize = 14
 
--- Bộ phím bấm
-local ctrl = {f = 0, b = 0, l = 0, r = 0}
-local isUpPressed, isDownPressed = false, false
+local function applyCorner(btn)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, 4)
+	c.Parent = btn
+end
+applyCorner(MinusBtn)
+applyCorner(PlusBtn)
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.W then ctrl.f = 1 end
-	if input.KeyCode == Enum.KeyCode.S then ctrl.b = -1 end
-	if input.KeyCode == Enum.KeyCode.A then ctrl.l = -1 end
-	if input.KeyCode == Enum.KeyCode.D then ctrl.r = 1 end
-end)
+SpeedLabel.Name = "SpeedLabel"
+SpeedLabel.Parent = FlyControlFrame
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.Position = UDim2.new(0.25, 0, 0.1, 0)
+SpeedLabel.Size = UDim2.new(0.5, 0, 0.8, 0)
+SpeedLabel.Font = Enum.Font.GothamBold
+SpeedLabel.Text = "Tốc độ: 50"
+SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedLabel.TextSize = 12
 
-UserInputService.InputEnded:Connect(function(input)
-	if input.KeyCode == Enum.KeyCode.W then ctrl.f = 0 end
-	if input.KeyCode == Enum.KeyCode.S then ctrl.b = 0 end
-	if input.KeyCode == Enum.KeyCode.A then ctrl.l = 0 end
-	if input.KeyCode == Enum.KeyCode.D then ctrl.r = 0 end
-end)
+-- Logic Xử Lý Fly
+local flying = false
+local flySpeed = 50
+local bodyGyro, bodyVelocity
 
--- Xử lý Bật / Tắt Fly
-onof.MouseButton1Down:Connect(function()
-	if nowe then
-		nowe = false
-		if speaker.Character and speaker.Character:FindFirstChildOfClass("Humanoid") then
-			speaker.Character.Humanoid.PlatformStand = false
-			if speaker.Character:FindFirstChild("Animate") then
-				speaker.Character.Animate.Disabled = false
-			end
-		end
-	else
-		nowe = true
-		local char = speaker.Character
-		if not char then return end
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-		
-		if not root or not hum then return end
-
+local function startFly()
+	local char = LocalPlayer.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+	
+	local root = char.HumanoidRootPart
+	local camera = workspace.CurrentCamera
+	
+	bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.P = 9e4
+	bodyGyro.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+	bodyGyro.cframe = root.CFrame
+	bodyGyro.Parent = root
+	
+	bodyVelocity = Instance.new("BodyVelocity")
+	bodyVelocity.velocity = Vector3.zero
+	bodyVelocity.maxForce = Vector3.new(9e9, 9e9, 9e9)
+	bodyVelocity.Parent = root
+	
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if hum then
 		hum.PlatformStand = true
-		if char:FindFirstChild("Animate") then
-			char.Animate.Disabled = true
-		end
+	end
 
-		local bg = Instance.new("BodyGyro")
-		bg.P = 9e4
-		bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-		bg.cframe = root.CFrame
-		bg.Parent = root
+	task.spawn(function()
+		while flying and char and char:FindFirstChild("HumanoidRootPart") and bodyVelocity and bodyGyro do
+			RunService.RenderStepped:Wait()
+			
+			local currentHum = char:FindFirstChildOfClass("Humanoid")
+			if not currentHum then break end
 
-		local bv = Instance.new("BodyVelocity")
-		bv.velocity = Vector3.new(0, 0.1, 0)
-		bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
-		bv.Parent = root
-
-		task.spawn(function()
-			while nowe and char and hum and hum.Health > 0 do
-				RunService.RenderStepped:Wait()
+			local moveDir = currentHum.MoveDirection
+			
+			if moveDir.Magnitude > 0 then
+				local camCF = camera.CFrame
+				local lookXZ = Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z)
 				
-				local camera = workspace.CurrentCamera
-				local moveDir = hum.MoveDirection
-				local currentSpeed = speeds * 50
-				
-				-- Tính toán hướng di chuyển dựa trên CFrame của Camera (Bao gồm cả trục Y nghiêng lên/xuống)
-				local flyVector = Vector3.new(0, 0, 0)
-
-				if ctrl.f + ctrl.b ~= 0 or ctrl.l + ctrl.r ~= 0 then
-					-- PC: Di chuyển chính xác theo hướng ống kính Camera
-					flyVector = (camera.CFrame.LookVector * (ctrl.f + ctrl.b)) + (camera.CFrame.RightVector * (ctrl.l + ctrl.r))
-				elseif moveDir.Magnitude > 0 then
-					-- Mobile: Xoay hướng Joystick theo góc xoay ngang của Camera
-					local camRight = camera.CFrame.RightVector
-					local camForward = Vector3.new(camera.CFrame.LookVector.X, 0, camera.CFrame.LookVector.Z).Unit
-					flyVector = (camForward * -moveDir.Z) + (camRight * moveDir.X)
+				local flyVector
+				if lookXZ.Magnitude > 0.001 then
+					-- Lấy CFrame phẳng trên mặt đất của camera
+					local flatCamCF = CFrame.lookAt(camCF.Position, camCF.Position + lookXZ)
+					-- Chuyển phím di chuyển (WASD / Joystick) sang Local Space của Camera
+					local localInput = flatCamCF:VectorToObjectSpace(moveDir)
+					-- Áp dụng hướng đó theo CFrame 3D thực tế của Camera (bao gồm cả góc ngẩng/cúi)
+					flyVector = camCF:VectorToWorldSpace(localInput)
+				else
+					flyVector = camCF.LookVector
 				end
-
-				-- Nếu muốn nâng/hạ độ cao thủ công bằng nút UP/DOWN trên UI
-				local extraY = 0
-				if isUpPressed then extraY = currentSpeed / 1.5 end
-				if isDownPressed then extraY = -currentSpeed / 1.5 end
-
-				bv.velocity = (flyVector * currentSpeed) + Vector3.new(0, extraY, 0)
-				bg.cframe = camera.CFrame
+				
+				bodyVelocity.velocity = flyVector * flySpeed
+			else
+				bodyVelocity.velocity = Vector3.zero
 			end
+			
+			bodyGyro.cframe = camera.CFrame
+		end
+	end)
+end
 
-			bg:Destroy()
-			bv:Destroy()
-			if hum then hum.PlatformStand = false end
-			if char:FindFirstChild("Animate") then char.Animate.Disabled = false end
-		end)
+local function stopFly()
+	flying = false
+	if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+	if bodyVelocity then bodyVelocity:Destroy() bodyVelocity = nil end
+	
+	local char = LocalPlayer.Character
+	if char and char:FindFirstChildOfClass("Humanoid") then
+		char:FindFirstChildOfClass("Humanoid").PlatformStand = false
 	end
-end)
+end
 
--- Sự kiện giữ nút UP/DOWN
-up.MouseButton1Down:Connect(function() isUpPressed = true end)
-up.MouseButton1Up:Connect(function() isUpPressed = false end)
-up.MouseLeave:Connect(function() isUpPressed = false end)
-
-down.MouseButton1Down:Connect(function() isDownPressed = true end)
-down.MouseButton1Up:Connect(function() isDownPressed = false end)
-down.MouseLeave:Connect(function() isDownPressed = false end)
-
--- Nút Tăng/Giảm tốc độ
-plus.MouseButton1Down:Connect(function()
-	speeds = speeds + 1
-	speed.Text = tostring(speeds)
-end)
-
-mine.MouseButton1Down:Connect(function()
-	if speeds > 1 then
-		speeds = speeds - 1
-		speed.Text = tostring(speeds)
+-- Sự kiện Click
+FlyToggleBtn.MouseButton1Click:Connect(function()
+	flying = not flying
+	if flying then
+		FlyToggleBtn.Text = "Tắt Fly"
+		FlyToggleBtn.TextColor3 = Color3.fromRGB(255, 70, 70)
+		FlyControlFrame.Visible = true
+		startFly()
 	else
-		speed.Text = "Min 1"
-		task.wait(1)
-		speed.Text = tostring(speeds)
+		FlyToggleBtn.Text = "Bật Fly"
+		FlyToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+		FlyControlFrame.Visible = false
+		stopFly()
 	end
 end)
 
--- Đóng / Thu nhỏ Menu
-closebutton.MouseButton1Click:Connect(function()
-	nowe = false
-	main:Destroy()
+ToggleBtn.MouseButton1Click:Connect(function()
+	MainFrame.Visible = not MainFrame.Visible
+	if not MainFrame.Visible then
+		FlyControlFrame.Visible = false
+	elseif flying then
+		FlyControlFrame.Visible = true
+	end
 end)
 
-mini.MouseButton1Click:Connect(function()
-	up.Visible = false
-	down.Visible = false
-	onof.Visible = false
-	plus.Visible = false
-	speed.Visible = false
-	mine.Visible = false
-	mini.Visible = false
-	mini2.Visible = true
-	Frame.BackgroundTransparency = 1
-	closebutton.Position = UDim2.new(0, 0, -1, 57)
+CloseBtn.MouseButton1Click:Connect(function()
+	MainFrame.Visible = false
+	FlyControlFrame.Visible = false
 end)
 
-mini2.MouseButton1Click:Connect(function()
-	up.Visible = true
-	down.Visible = true
-	onof.Visible = true
-	plus.Visible = true
-	speed.Visible = true
-	mine.Visible = true
-	mini.Visible = true
-	mini2.Visible = false
-	Frame.BackgroundTransparency = 0 
-	closebutton.Position = UDim2.new(0, 0, -1, 27)
+PlusBtn.MouseButton1Click:Connect(function()
+	flySpeed = math.min(flySpeed + 10, 300)
+	SpeedLabel.Text = "Tốc độ: " .. tostring(flySpeed)
 end)
 
-speaker.CharacterAdded:Connect(function()
-	nowe = false
+MinusBtn.MouseButton1Click:Connect(function()
+	flySpeed = math.max(flySpeed - 10, 10)
+	SpeedLabel.Text = "Tốc độ: " .. tostring(flySpeed)
 end)
