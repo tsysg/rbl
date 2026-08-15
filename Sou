@@ -1330,7 +1330,7 @@ local MobileButton = Minimizer:CreateMobileMinimizer({
 })
 
 local Tabs = {
-    Info = Window:MakeTab({ Title = "Tab Info And Status", Icon = "Info" }),
+    Info = Window:CreateTab("Tab Info And Status", "Info"),
     Main = Window:MakeTab({ Title = "Tab Farming", Icon = "rbxassetid://7733960981" }),
     Settings = Window:MakeTab({ Title = "Tab Setting", Icon = "rbxassetid://7734053495" }),
     Fish = Window:MakeTab({ Title = "Tab Fishing", Icon = "rbxassetid://127664059821666" }),
