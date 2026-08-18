@@ -1,694 +1,151 @@
--- ============================================================
---       GREEDY GROWERS - ĐẾM NGƯỢC SÉT ĐÁNH PRO
---                 Bản quyền NT TEAM
--- ============================================================
--- Mô tả: Khi trồng cây, script đếm ngược thời gian đến khi
---        sét đánh chính xác vào cây đó. Thu hoạch trước khi
---        hết giờ sẽ an toàn.
--- ============================================================
-
--- ======================== SERVICE =============================
+-- [[ GREEDY GROWERS - LIGHTNING PREDICTOR UI (MARU STYLE) ]] --
 local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 
--- ======================== BIẾN TOÀN CỤC ======================
-local isLoggedIn = false
-local isCountingDown = false      -- Đang đếm ngược
-local startTime = 0               -- Thời điểm bắt đầu đếm
-local growthDuration = 60         -- Tổng thời gian (giây)
-local timeLeft = 60               -- Thời gian còn lại
-local isHarvested = false         -- Đã thu hoạch chưa
-local selectedTree = "Oak"
-local countingDownConnection = nil
+local LocalPlayer = Players.LocalPlayer
 
--- Danh sách cây và thời gian (giây)
-local TREE_DATA = {
-    Oak = { name = "Cây Sồi", time = 60, color = Color3.fromRGB(34, 139, 34) },
-    Maple = { name = "Cây Phong", time = 90, color = Color3.fromRGB(255, 140, 0) },
-    Pine = { name = "Cây Thông", time = 120, color = Color3.fromRGB(0, 100, 0) },
-    Cherry = { name = "Cây Anh Đào", time = 75, color = Color3.fromRGB(255, 105, 180) },
-    Custom = { name = "Tùy chỉnh", time = 60, color = Color3.fromRGB(128, 128, 128) }
-}
+-- Tạo ScreenGui an toàn
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "GreedyGrowersPredictor"
+ScreenGui.ResetOnSpawn = false
 
--- ======================== TẠO GUI CHÍNH ======================
-local function createUI()
-    -- ScreenGui
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "NTSetCountdown"
-    screenGui.Parent = Player:WaitForChild("PlayerGui")
-    screenGui.ResetOnSpawn = false
-
-    -- ============== BACKGROUND CHUNG ==============
-    local background = Instance.new("Frame")
-    background.Size = UDim2.new(1, 0, 1, 0)
-    background.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    background.BackgroundTransparency = 0.6
-    background.Parent = screenGui
-
-    -- ============== FRAME ĐĂNG NHẬP ==============
-    local loginFrame = Instance.new("Frame")
-    loginFrame.Size = UDim2.new(0, 420, 0, 300)
-    loginFrame.Position = UDim2.new(0.5, -210, 0.5, -150)
-    loginFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    loginFrame.BackgroundTransparency = 0.1
-    loginFrame.BorderSizePixel = 0
-    loginFrame.Parent = background
-    -- Đổ bóng
-    local shadow = Instance.new("ImageLabel")
-    shadow.Size = UDim2.new(1, 20, 1, 20)
-    shadow.Position = UDim2.new(0, -10, 0, -10)
-    shadow.BackgroundTransparency = 1
-    shadow.Image = "rbxassetid://1316043529"
-    shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-    shadow.ImageTransparency = 0.5
-    shadow.Parent = loginFrame
-    -- Bo góc
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 16)
-    corner.Parent = loginFrame
-
-    -- Tiêu đề
-    local titleLogin = Instance.new("TextLabel")
-    titleLogin.Size = UDim2.new(1, 0, 0, 50)
-    titleLogin.Position = UDim2.new(0, 0, 0, 10)
-    titleLogin.BackgroundTransparency = 1
-    titleLogin.Text = "🔐 NT TEAM - ĐĂNG NHẬP"
-    titleLogin.TextColor3 = Color3.fromRGB(255, 215, 0)
-    titleLogin.TextScaled = true
-    titleLogin.Font = Enum.Font.GothamBold
-    titleLogin.Parent = loginFrame
-
-    local subTitle = Instance.new("TextLabel")
-    subTitle.Size = UDim2.new(1, 0, 0, 25)
-    subTitle.Position = UDim2.new(0, 0, 0, 60)
-    subTitle.BackgroundTransparency = 1
-    subTitle.Text = "Nhập mã key để kích hoạt"
-    subTitle.TextColor3 = Color3.fromRGB(180, 180, 190)
-    subTitle.TextScaled = true
-    subTitle.Font = Enum.Font.Gotham
-    subTitle.Parent = loginFrame
-
-    -- Ô nhập key
-    local keyBox = Instance.new("TextBox")
-    keyBox.Size = UDim2.new(0.8, 0, 0, 40)
-    keyBox.Position = UDim2.new(0.1, 0, 0, 100)
-    keyBox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    keyBox.BorderSizePixel = 0
-    keyBox.Text = ""
-    keyBox.PlaceholderText = "Nhập key..."
-    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    keyBox.TextScaled = true
-    keyBox.Font = Enum.Font.Gotham
-    keyBox.ClearTextOnFocus = false
-    keyBox.Parent = loginFrame
-    local cornerBox = Instance.new("UICorner")
-    cornerBox.CornerRadius = UDim.new(0, 8)
-    cornerBox.Parent = keyBox
-
-    -- Nút đăng nhập
-    local loginBtn = Instance.new("TextButton")
-    loginBtn.Size = UDim2.new(0.5, 0, 0, 45)
-    loginBtn.Position = UDim2.new(0.25, 0, 0, 165)
-    loginBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-    loginBtn.BorderSizePixel = 0
-    loginBtn.Text = "ĐĂNG NHẬP"
-    loginBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    loginBtn.TextScaled = true
-    loginBtn.Font = Enum.Font.GothamBold
-    loginBtn.Parent = loginFrame
-    local cornerBtn = Instance.new("UICorner")
-    cornerBtn.CornerRadius = UDim.new(0, 10)
-    cornerBtn.Parent = loginBtn
-    loginBtn.MouseEnter:Connect(function()
-        TweenService:Create(loginBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 100, 220)}):Play()
-    end)
-    loginBtn.MouseLeave:Connect(function()
-        TweenService:Create(loginBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 120, 255)}):Play()
-    end)
-
-    -- Thông báo lỗi
-    local errorLabel = Instance.new("TextLabel")
-    errorLabel.Size = UDim2.new(1, 0, 0, 25)
-    errorLabel.Position = UDim2.new(0, 0, 0, 220)
-    errorLabel.BackgroundTransparency = 1
-    errorLabel.Text = ""
-    errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-    errorLabel.TextScaled = true
-    errorLabel.Font = Enum.Font.Gotham
-    errorLabel.Parent = loginFrame
-
-    -- ============== FRAME MENU CHÍNH ==============
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 480, 0, 520)
-    mainFrame.Position = UDim2.new(0.5, -240, 0.5, -260)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
-    mainFrame.BackgroundTransparency = 0.1
-    mainFrame.BorderSizePixel = 0
-    mainFrame.Visible = false
-    mainFrame.Parent = background
-    local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 18)
-    mainCorner.Parent = mainFrame
-    local mainShadow = Instance.new("ImageLabel")
-    mainShadow.Size = UDim2.new(1, 20, 1, 20)
-    mainShadow.Position = UDim2.new(0, -10, 0, -10)
-    mainShadow.BackgroundTransparency = 1
-    mainShadow.Image = "rbxassetid://1316043529"
-    mainShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-    mainShadow.ImageTransparency = 0.6
-    mainShadow.Parent = mainFrame
-
-    -- Header
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 60)
-    header.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
-    header.BorderSizePixel = 0
-    header.Parent = mainFrame
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 18)
-    headerCorner.Parent = header
-
-    local titleMain = Instance.new("TextLabel")
-    titleMain.Size = UDim2.new(0.7, 0, 1, 0)
-    titleMain.Position = UDim2.new(0.05, 0, 0, 0)
-    titleMain.BackgroundTransparency = 1
-    titleMain.Text = "⏳ ĐẾM NGƯỢC SÉT"
-    titleMain.TextColor3 = Color3.fromRGB(255, 215, 0)
-    titleMain.TextScaled = true
-    titleMain.Font = Enum.Font.GothamBold
-    titleMain.Parent = header
-
-    -- Nút đóng
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 40, 0, 40)
-    closeBtn.Position = UDim2.new(0.92, 0, 0.1, 0)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    closeBtn.BorderSizePixel = 0
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.TextScaled = true
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Parent = header
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(1, 0)
-    closeCorner.Parent = closeBtn
-    closeBtn.MouseButton1Click:Connect(function()
-        screenGui:Destroy()
-    end)
-
-    -- ============== KHU VỰC CHỌN CÂY ==============
-    local treePanel = Instance.new("Frame")
-    treePanel.Size = UDim2.new(1, -20, 0, 70)
-    treePanel.Position = UDim2.new(0, 10, 0, 75)
-    treePanel.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
-    treePanel.BackgroundTransparency = 0.3
-    treePanel.BorderSizePixel = 0
-    treePanel.Parent = mainFrame
-    local treeCorner = Instance.new("UICorner")
-    treeCorner.CornerRadius = UDim.new(0, 12)
-    treeCorner.Parent = treePanel
-
-    local treeLabel = Instance.new("TextLabel")
-    treeLabel.Size = UDim2.new(0.2, 0, 1, 0)
-    treeLabel.Position = UDim2.new(0, 5, 0, 0)
-    treeLabel.BackgroundTransparency = 1
-    treeLabel.Text = "🌳 Cây:"
-    treeLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
-    treeLabel.TextScaled = true
-    treeLabel.Font = Enum.Font.GothamBold
-    treeLabel.Parent = treePanel
-
-    -- Dropdown
-    local treeDropdown = Instance.new("TextButton")
-    treeDropdown.Size = UDim2.new(0.3, 0, 0.6, 0)
-    treeDropdown.Position = UDim2.new(0.25, 0, 0.2, 0)
-    treeDropdown.BackgroundColor3 = Color3.fromRGB(60, 65, 80)
-    treeDropdown.BorderSizePixel = 0
-    treeDropdown.Text = "Cây Sồi"
-    treeDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
-    treeDropdown.TextScaled = true
-    treeDropdown.Font = Enum.Font.Gotham
-    treeDropdown.Parent = treePanel
-    local dropCorner = Instance.new("UICorner")
-    dropCorner.CornerRadius = UDim.new(0, 8)
-    dropCorner.Parent = treeDropdown
-
-    -- Nút tùy chỉnh
-    local customTimeBtn = Instance.new("TextButton")
-    customTimeBtn.Size = UDim2.new(0.2, 0, 0.6, 0)
-    customTimeBtn.Position = UDim2.new(0.58, 0, 0.2, 0)
-    customTimeBtn.BackgroundColor3 = Color3.fromRGB(60, 65, 80)
-    customTimeBtn.BorderSizePixel = 0
-    customTimeBtn.Text = "⏱ Tùy chỉnh"
-    customTimeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    customTimeBtn.TextScaled = true
-    customTimeBtn.Font = Enum.Font.Gotham
-    customTimeBtn.Parent = treePanel
-    local customCorner = Instance.new("UICorner")
-    customCorner.CornerRadius = UDim.new(0, 8)
-    customCorner.Parent = customTimeBtn
-
-    -- Ô nhập thời gian
-    local customTimeBox = Instance.new("TextBox")
-    customTimeBox.Size = UDim2.new(0.15, 0, 0.6, 0)
-    customTimeBox.Position = UDim2.new(0.8, 0, 0.2, 0)
-    customTimeBox.BackgroundColor3 = Color3.fromRGB(50, 55, 70)
-    customTimeBox.BorderSizePixel = 0
-    customTimeBox.Text = "60"
-    customTimeBox.PlaceholderText = "giây"
-    customTimeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    customTimeBox.TextScaled = true
-    customTimeBox.Font = Enum.Font.Gotham
-    customTimeBox.Visible = false
-    customTimeBox.Parent = treePanel
-    local customBoxCorner = Instance.new("UICorner")
-    customBoxCorner.CornerRadius = UDim.new(0, 8)
-    customBoxCorner.Parent = customTimeBox
-
-    -- ============== ĐỒNG HỒ ĐẾM NGƯỢC LỚN ==============
-    local clockFrame = Instance.new("Frame")
-    clockFrame.Size = UDim2.new(1, -20, 0, 100)
-    clockFrame.Position = UDim2.new(0, 10, 0, 160)
-    clockFrame.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
-    clockFrame.BackgroundTransparency = 0.3
-    clockFrame.BorderSizePixel = 0
-    clockFrame.Parent = mainFrame
-    local clockCorner = Instance.new("UICorner")
-    clockCorner.CornerRadius = UDim.new(0, 12)
-    clockCorner.Parent = clockFrame
-
-    -- Thời gian còn lại (hiển thị số lớn)
-    local timeLeftLabel = Instance.new("TextLabel")
-    timeLeftLabel.Size = UDim2.new(1, 0, 0.7, 0)
-    timeLeftLabel.Position = UDim2.new(0, 0, 0, 5)
-    timeLeftLabel.BackgroundTransparency = 1
-    timeLeftLabel.Text = "60s"
-    timeLeftLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-    timeLeftLabel.TextScaled = true
-    timeLeftLabel.Font = Enum.Font.GothamBold
-    timeLeftLabel.Parent = clockFrame
-
-    -- Thanh tiến trình dạng vòng tròn hoặc thanh ngang bên dưới
-    local progressBg = Instance.new("Frame")
-    progressBg.Size = UDim2.new(0.9, 0, 0.15, 0)
-    progressBg.Position = UDim2.new(0.05, 0, 0.8, 0)
-    progressBg.BackgroundColor3 = Color3.fromRGB(60, 65, 80)
-    progressBg.BorderSizePixel = 0
-    progressBg.Parent = clockFrame
-    local progBgCorner = Instance.new("UICorner")
-    progBgCorner.CornerRadius = UDim.new(0, 10)
-    progBgCorner.Parent = progressBg
-
-    local progressBar = Instance.new("Frame")
-    progressBar.Size = UDim2.new(1, 0, 1, 0) -- sẽ thay đổi theo thời gian
-    progressBar.BackgroundColor3 = Color3.fromRGB(0, 200, 80)
-    progressBar.BorderSizePixel = 0
-    progressBar.Parent = progressBg
-    local progBarCorner = Instance.new("UICorner")
-    progBarCorner.CornerRadius = UDim.new(0, 10)
-    progBarCorner.Parent = progressBar
-
-    -- ============== KHU VỰC CẢNH BÁO ==============
-    local warningFrame = Instance.new("Frame")
-    warningFrame.Size = UDim2.new(1, -20, 0, 60)
-    warningFrame.Position = UDim2.new(0, 10, 0, 275)
-    warningFrame.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
-    warningFrame.BackgroundTransparency = 0.3
-    warningFrame.BorderSizePixel = 0
-    warningFrame.Parent = mainFrame
-    local warnCorner = Instance.new("UICorner")
-    warnCorner.CornerRadius = UDim.new(0, 12)
-    warnCorner.Parent = warningFrame
-
-    local warningLabel = Instance.new("TextLabel")
-    warningLabel.Size = UDim2.new(1, 0, 1, 0)
-    warningLabel.BackgroundTransparency = 1
-    warningLabel.Text = "✅ SẴN SÀNG"
-    warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-    warningLabel.TextScaled = true
-    warningLabel.Font = Enum.Font.GothamBold
-    warningLabel.Parent = warningFrame
-
-    -- ============== NÚT ĐIỀU KHIỂN ==============
-    local controlPanel = Instance.new("Frame")
-    controlPanel.Size = UDim2.new(1, -20, 0, 55)
-    controlPanel.Position = UDim2.new(0, 10, 0, 350)
-    controlPanel.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
-    controlPanel.BackgroundTransparency = 0.3
-    controlPanel.BorderSizePixel = 0
-    controlPanel.Parent = mainFrame
-    local ctrlCorner = Instance.new("UICorner")
-    ctrlCorner.CornerRadius = UDim.new(0, 12)
-    ctrlCorner.Parent = controlPanel
-
-    -- Nút Trồng (bắt đầu đếm ngược)
-    local startBtn = Instance.new("TextButton")
-    startBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
-    startBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
-    startBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-    startBtn.BorderSizePixel = 0
-    startBtn.Text = "🌱 TRỒNG"
-    startBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    startBtn.TextScaled = true
-    startBtn.Font = Enum.Font.GothamBold
-    startBtn.Parent = controlPanel
-    local startCorner = Instance.new("UICorner")
-    startCorner.CornerRadius = UDim.new(0, 10)
-    startCorner.Parent = startBtn
-    startBtn.MouseEnter:Connect(function()
-        TweenService:Create(startBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 200, 100)}):Play()
-    end)
-    startBtn.MouseLeave:Connect(function()
-        TweenService:Create(startBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 180, 80)}):Play()
-    end)
-
-    -- Nút Dừng (reset)
-    local stopBtn = Instance.new("TextButton")
-    stopBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
-    stopBtn.Position = UDim2.new(0.38, 0, 0.15, 0)
-    stopBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    stopBtn.BorderSizePixel = 0
-    stopBtn.Text = "⏹ DỪNG"
-    stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    stopBtn.TextScaled = true
-    stopBtn.Font = Enum.Font.GothamBold
-    stopBtn.Parent = controlPanel
-    local stopCorner = Instance.new("UICorner")
-    stopCorner.CornerRadius = UDim.new(0, 10)
-    stopCorner.Parent = stopBtn
-    stopBtn.MouseEnter:Connect(function()
-        TweenService:Create(stopBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(220, 60, 60)}):Play()
-    end)
-    stopBtn.MouseLeave:Connect(function()
-        TweenService:Create(stopBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(200, 50, 50)}):Play()
-    end)
-
-    -- Nút Thu hoạch
-    local harvestBtn = Instance.new("TextButton")
-    harvestBtn.Size = UDim2.new(0.25, 0, 0.7, 0)
-    harvestBtn.Position = UDim2.new(0.71, 0, 0.15, 0)
-    harvestBtn.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
-    harvestBtn.BorderSizePixel = 0
-    harvestBtn.Text = "💰 THU HOẠCH"
-    harvestBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    harvestBtn.TextScaled = true
-    harvestBtn.Font = Enum.Font.GothamBold
-    harvestBtn.Parent = controlPanel
-    local harvestCorner = Instance.new("UICorner")
-    harvestCorner.CornerRadius = UDim.new(0, 10)
-    harvestCorner.Parent = harvestBtn
-    harvestBtn.MouseEnter:Connect(function()
-        TweenService:Create(harvestBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 190, 20)}):Play()
-    end)
-    harvestBtn.MouseLeave:Connect(function()
-        TweenService:Create(harvestBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 170, 0)}):Play()
-    end)
-
-    -- ============== THÔNG TIN THÊM ==============
-    local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, -20, 0, 30)
-    infoLabel.Position = UDim2.new(0, 10, 0, 420)
-    infoLabel.BackgroundTransparency = 1
-    infoLabel.Text = "⏳ Chọn cây và nhấn TRỒNG để bắt đầu"
-    infoLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
-    infoLabel.TextScaled = true
-    infoLabel.Font = Enum.Font.Gotham
-    infoLabel.Parent = mainFrame
-
-    -- ================= XỬ LÝ SỰ KIỆN =================
-
-    -- Đăng nhập
-    loginBtn.MouseButton1Click:Connect(function()
-        local key = keyBox.Text
-        if key == "NT TEAM" then
-            isLoggedIn = true
-            loginFrame.Visible = false
-            mainFrame.Visible = true
-            errorLabel.Text = ""
-            mainFrame.BackgroundTransparency = 1
-            TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-                {BackgroundTransparency = 0.1}):Play()
-        else
-            errorLabel.Text = "❌ Key không hợp lệ! Vui lòng thử lại."
-            errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            TweenService:Create(keyBox, TweenInfo.new(0.1), {Position = UDim2.new(0.1, 5, 0, 100)}):Play()
-            task.wait(0.1)
-            TweenService:Create(keyBox, TweenInfo.new(0.1), {Position = UDim2.new(0.1, -5, 0, 100)}):Play()
-            task.wait(0.1)
-            TweenService:Create(keyBox, TweenInfo.new(0.1), {Position = UDim2.new(0.1, 0, 0, 100)}):Play()
-        end
-    end)
-
-    -- Chọn cây
-    local treeOptions = {"Cây Sồi", "Cây Phong", "Cây Thông", "Cây Anh Đào", "Tùy chỉnh"}
-    local treeKeys = {"Oak", "Maple", "Pine", "Cherry", "Custom"}
-    local currentOptionIndex = 1
-    treeDropdown.MouseButton1Click:Connect(function()
-        currentOptionIndex = (currentOptionIndex % #treeOptions) + 1
-        local selected = treeOptions[currentOptionIndex]
-        treeDropdown.Text = selected
-        local key = treeKeys[currentOptionIndex]
-        if key == "Custom" then
-            customTimeBox.Visible = true
-            customTimeBtn.Visible = false
-            growthDuration = tonumber(customTimeBox.Text) or 60
-        else
-            customTimeBox.Visible = false
-            customTimeBtn.Visible = true
-            selectedTree = key
-            growthDuration = TREE_DATA[key].time
-        end
-        timeLeft = growthDuration
-        timeLeftLabel.Text = timeLeft .. "s"
-        progressBar.Size = UDim2.new(1, 0, 1, 0)
-        local treeColor = TREE_DATA[key] and TREE_DATA[key].color or Color3.fromRGB(0, 200, 80)
-        progressBar.BackgroundColor3 = treeColor
-    end)
-
-    -- Tùy chỉnh thời gian
-    customTimeBtn.MouseButton1Click:Connect(function()
-        customTimeBox.Visible = not customTimeBox.Visible
-        if customTimeBox.Visible then
-            customTimeBtn.Text = "✔ Xác nhận"
-        else
-            customTimeBtn.Text = "⏱ Tùy chỉnh"
-            local num = tonumber(customTimeBox.Text)
-            if num and num > 0 then
-                growthDuration = num
-                timeLeft = num
-                selectedTree = "Custom"
-                treeDropdown.Text = "Tùy chỉnh"
-                timeLeftLabel.Text = timeLeft .. "s"
-                progressBar.Size = UDim2.new(1, 0, 1, 0)
-                progressBar.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
-            end
-        end
-    end)
-
-    customTimeBox.FocusLost:Connect(function(enter)
-        if enter then
-            local num = tonumber(customTimeBox.Text)
-            if num and num > 0 then
-                growthDuration = num
-                timeLeft = num
-                selectedTree = "Custom"
-                treeDropdown.Text = "Tùy chỉnh"
-                timeLeftLabel.Text = timeLeft .. "s"
-                progressBar.Size = UDim2.new(1, 0, 1, 0)
-                progressBar.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
-                customTimeBox.Visible = false
-                customTimeBtn.Text = "⏱ Tùy chỉnh"
-                customTimeBtn.Visible = true
-            else
-                customTimeBox.Text = tostring(growthDuration)
-            end
-        end
-    end)
-
-    -- ============== HÀM ĐẾM NGƯỢC ==============
-
-    -- Cập nhật UI khi đếm ngược
-    local function updateCountdownUI()
-        if not isCountingDown then
-            timeLeftLabel.Text = growthDuration .. "s"
-            progressBar.Size = UDim2.new(1, 0, 1, 0)
-            warningLabel.Text = "✅ SẴN SÀNG"
-            warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-            infoLabel.Text = "⏳ Chọn cây và nhấn TRỒNG"
-            return
-        end
-
-        local elapsed = os.clock() - startTime
-        local remaining = math.max(0, growthDuration - elapsed)
-        timeLeft = math.ceil(remaining)
-        timeLeftLabel.Text = timeLeft .. "s"
-
-        -- Cập nhật thanh tiến trình (từ 1 về 0)
-        local progress = remaining / growthDuration
-        progressBar.Size = UDim2.new(progress, 0, 1, 0)
-
-        -- Đổi màu theo thời gian còn lại
-        if progress < 0.15 then
-            progressBar.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-            warningLabel.Text = "⚡ SÉP SẮP ĐÁNH! CHỈ CÒN " .. timeLeft .. "s!"
-            warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-            infoLabel.Text = "⚠️ CỰC KỲ NGUY HIỂM! THU HOẠCH NGAY!"
-        elseif progress < 0.4 then
-            progressBar.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
-            warningLabel.Text = "⚠️ CẨN THẬN! CÒN " .. timeLeft .. "s"
-            warningLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
-            infoLabel.Text = "⚡ Sét sẽ đánh sau " .. timeLeft .. " giây nữa"
-        else
-            progressBar.BackgroundColor3 = TREE_DATA[selectedTree] and TREE_DATA[selectedTree].color or Color3.fromRGB(0, 200, 80)
-            warningLabel.Text = "🌱 Cây đang phát triển... " .. timeLeft .. "s"
-            warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-            infoLabel.Text = "⏳ Còn " .. timeLeft .. " giây trước khi sét đánh"
-        end
-
-        -- Nếu hết giờ -> sét đánh
-        if remaining <= 0 and isCountingDown and not isHarvested then
-            isCountingDown = false
-            lightningStrike()
-        end
-    end
-
-    -- Sự kiện sét đánh
-    local function lightningStrike()
-        warningLabel.Text = "💥 SÉT ĐÁNH! CÂY ĐÃ BỊ HỎNG!"
-        warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-        timeLeftLabel.Text = "💀"
-        progressBar.Size = UDim2.new(0, 0, 1, 0)
-        progressBar.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-        infoLabel.Text = "💀 Cây đã bị sét đánh! Bạn đã mất cây!"
-        isHarvested = true
-        isCountingDown = false
-        print("[Đếm ngược sét] Sét đánh sau đúng " .. growthDuration .. " giây")
-    end
-
-    -- Vòng lặp cập nhật UI liên tục
-    local function startCountdownLoop()
-        if countingDownConnection then
-            countingDownConnection:Disconnect()
-            countingDownConnection = nil
-        end
-        countingDownConnection = RunService.Heartbeat:Connect(function()
-            updateCountdownUI()
-        end)
-    end
-
-    -- ============== HÀM ĐIỀU KHIỂN ==============
-
-    -- Trồng cây (bắt đầu đếm ngược)
-    local function plantTree()
-        if isCountingDown then
-            infoLabel.Text = "⚠️ Đã có cây đang trồng!"
-            return
-        end
-        -- Reset trạng thái
-        isHarvested = false
-        startTime = os.clock()
-        isCountingDown = true
-        infoLabel.Text = "🌱 Đã trồng cây! Sét sẽ đánh sau " .. growthDuration .. "s"
-        warningLabel.Text = "🌱 Cây đang phát triển..."
-        warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-        timeLeft = growthDuration
-        timeLeftLabel.Text = timeLeft .. "s"
-        progressBar.Size = UDim2.new(1, 0, 1, 0)
-        -- Bắt đầu vòng lặp cập nhật
-        startCountdownLoop()
-        print("[Đếm ngược sét] Đã trồng cây, sét sẽ đánh sau " .. growthDuration .. " giây")
-    end
-
-    -- Dừng (reset)
-    local function stopPlant()
-        isCountingDown = false
-        isHarvested = false
-        if countingDownConnection then
-            countingDownConnection:Disconnect()
-            countingDownConnection = nil
-        end
-        timeLeft = growthDuration
-        timeLeftLabel.Text = timeLeft .. "s"
-        progressBar.Size = UDim2.new(1, 0, 1, 0)
-        warningLabel.Text = "✅ ĐÃ DỪNG"
-        warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-        infoLabel.Text = "⏳ Đã dừng, nhấn TRỒNG để bắt đầu lại"
-        progressBar.BackgroundColor3 = TREE_DATA[selectedTree] and TREE_DATA[selectedTree].color or Color3.fromRGB(0, 200, 80)
-    end
-
-    -- Thu hoạch (nếu chưa bị sét đánh)
-    local function harvest()
-        if isHarvested then
-            infoLabel.Text = "⚠️ Cây đã bị sét đánh hoặc đã thu hoạch!"
-            return
-        end
-        if not isCountingDown then
-            infoLabel.Text = "⚠️ Chưa có cây để thu hoạch!"
-            return
-        end
-        -- Thu hoạch thành công
-        isCountingDown = false
-        isHarvested = true
-        if countingDownConnection then
-            countingDownConnection:Disconnect()
-            countingDownConnection = nil
-        end
-        local elapsed = os.clock() - startTime
-        warningLabel.Text = "💰 THU HOẠCH THÀNH CÔNG!"
-        warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-        timeLeftLabel.Text = "💰"
-        progressBar.Size = UDim2.new(0, 0, 1, 0)
-        progressBar.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-        infoLabel.Text = "💰 Đã thu hoạch sau " .. string.format("%.1f", elapsed) .. " giây"
-        print("[Đếm ngược sét] Thu hoạch thành công sau " .. string.format("%.1f", elapsed) .. " giây")
-    end
-
-    -- Gán nút
-    startBtn.MouseButton1Click:Connect(plantTree)
-    stopBtn.MouseButton1Click:Connect(stopPlant)
-    harvestBtn.MouseButton1Click:Connect(harvest)
-
-    -- ============== PHÍM TẮT ==============
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.KeyCode == Enum.KeyCode.R then -- R để trồng
-            plantTree()
-        elseif input.KeyCode == Enum.KeyCode.T then -- T để thu hoạch
-            harvest()
-        elseif input.KeyCode == Enum.KeyCode.S then -- S để dừng
-            stopPlant()
-        elseif input.KeyCode == Enum.KeyCode.Escape then -- ESC để đóng
-            screenGui:Destroy()
-        end
-    end)
-
-    -- ============== TRẢ VỀ ==============
-    return {
-        plantTree = plantTree,
-        stopPlant = stopPlant,
-        harvest = harvest,
-        setGrowthTime = function(time)
-            growthDuration = time
-            timeLeft = time
-            timeLeftLabel.Text = time .. "s"
-        end,
-        getStatus = function()
-            return isCountingDown, timeLeft, growthDuration
-        end
-    }
+-- Đưa vào CoreGui nếu có thể, nếu không dùng PlayerGui
+pcall(function()
+    ScreenGui.Parent = CoreGui
+end)
+if not ScreenGui.Parent then
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- ======================== KHỞI TẠO ===========================
-local ui = createUI()
+-- Khung chính Menu (Style Maru Hub)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 320, 0, 210)
+MainFrame.Position = UDim2.new(0.5, -160, 0.4, -105)
+MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
-print("========================================")
-print("  ⏳ GREEDY GROWERS - ĐẾM NGƯỢC SÉT")
-print("  Bản quyền NT TEAM")
-print("  Key mặc định: NT TEAM")
-print("  Phím tắt: R - Trồng, T - Thu hoạch, S - Dừng, ESC - Thoát")
-print("========================================")
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
 
--- ======================== KẾT THÚC ===========================
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(138, 43, 226) -- Màu tím Maru
+UIStroke.Thickness = 1.5
+UIStroke.Parent = MainFrame
+
+-- Tiêu đề (Header)
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundTransparency = 1
+Title.Text = "⚡ GREEDY GROWERS PREDICTOR"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 14
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+-- Khung thời gian đếm ngược
+local DisplayBox = Instance.new("Frame")
+DisplayBox.Size = UDim2.new(0.85, 0, 0, 70)
+DisplayBox.Position = UDim2.new(0.075, 0, 0.25, 0)
+DisplayBox.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
+DisplayBox.Parent = MainFrame
+
+local BoxCorner = Instance.new("UICorner")
+BoxCorner.CornerRadius = UDim.new(0, 8)
+BoxCorner.Parent = DisplayBox
+
+local TimeLabel = Instance.new("TextLabel")
+TimeLabel.Size = UDim2.new(1, 0, 0.6, 0)
+TimeLabel.Position = UDim2.new(0, 0, 0.1, 0)
+TimeLabel.BackgroundTransparency = 1
+TimeLabel.Text = "00:00.0"
+TimeLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Màu vàng sét
+TimeLabel.TextSize = 28
+TimeLabel.Font = Enum.Font.GothamBlack
+TimeLabel.Parent = DisplayBox
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, 0, 0.3, 0)
+StatusLabel.Position = UDim2.new(0, 0, 0.65, 0)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Trạng thái: Đang chờ trồng cây..."
+StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+StatusLabel.TextSize = 11
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.Parent = DisplayBox
+
+-- Nút kích hoạt thủ công / Test Đếm ngược
+local StartBtn = Instance.new("TextButton")
+StartBtn.Size = UDim2.new(0.85, 0, 0, 35)
+StartBtn.Position = UDim2.new(0.075, 0, 0.72, 0)
+StartBtn.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+StartBtn.Text = "BẮT ĐẦU ĐẾM NGƯỢC (TEST)"
+StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+StartBtn.TextSize = 12
+StartBtn.Font = Enum.Font.GothamBold
+StartBtn.Parent = MainFrame
+
+local BtnCorner = Instance.new("UICorner")
+BtnCorner.CornerRadius = UDim.new(0, 6)
+BtnCorner.Parent = StartBtn
+
+-- Logic Đếm ngược
+local isCounting = false
+
+local function startCountdown(duration)
+    if isCounting then return end
+    isCounting = true
+    StatusLabel.Text = "⚡ Cảnh báo: Sét sắp đánh!"
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 85, 85)
+    
+    local remaining = duration
+    while remaining > 0 do
+        TimeLabel.Text = string.format("%02d:%04.1f", math.floor(remaining / 60), remaining % 60)
+        task.wait(0.1)
+        remaining = remaining - 0.1
+    end
+    
+    TimeLabel.Text = "00:00.0"
+    StatusLabel.Text = "⚡ SÉT ĐÃ ĐÁNH!"
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+    
+    -- Hiệu ứng nhấp nháy báo hiệu
+    for i = 1, 4 do
+        DisplayBox.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+        task.wait(0.1)
+        DisplayBox.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
+        task.wait(0.1)
+    end
+    
+    isCounting = false
+end
+
+-- Nút Test
+StartBtn.MouseButton1Click:Connect(function()
+    -- Thay 30 bằng số giây ước tính/chu kỳ cây trồng bị đánh trong game
+    task.spawn(function()
+        startCountdown(30)
+    end)
+end)
+
+-- TỰ ĐỘNG BẮT SỰ KIỆN TỪ GAME (Nếu Server có Attribute/Value)
+-- Bạn có thể chỉnh sửa lại Workspace.Plants theo cấu trúc thực tế của game:
+workspace.ChildAdded:Connect(function(child)
+    if child.Name == "Plant" or child:FindFirstChild("LightningTime") then
+        local lightningAttr = child:GetAttribute("LightningTime") or child:FindFirstChild("LightningTime")
+        if lightningAttr then
+            local targetTime = typeof(lightningAttr) == "Instance" and lightningAttr.Value or lightningAttr
+            local countdown = targetTime - workspace:GetServerTimeNow()
+            if countdown > 0 then
+                task.spawn(function()
+                    startCountdown(countdown)
+                end)
+            end
+        end
+    end
+end)
