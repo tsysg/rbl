@@ -1,9 +1,10 @@
 -- ============================================================
---                  GREEDY GROWERS - DỰ BÁO SÉT PRO
---                 Bản quyền thuộc về NT TEAM
+--       GREEDY GROWERS - ĐẾM NGƯỢC SÉT ĐÁNH PRO
+--                 Bản quyền NT TEAM
 -- ============================================================
--- Mô tả: Script dự báo sét đánh với giao diện đẹp, nhập key,
---        đếm thời gian chuẩn, cảnh báo theo từng giai đoạn.
+-- Mô tả: Khi trồng cây, script đếm ngược thời gian đến khi
+--        sét đánh chính xác vào cây đó. Thu hoạch trước khi
+--        hết giờ sẽ an toàn.
 -- ============================================================
 
 -- ======================== SERVICE =============================
@@ -15,13 +16,13 @@ local UserInputService = game:GetService("UserInputService")
 
 -- ======================== BIẾN TOÀN CỤC ======================
 local isLoggedIn = false
-local isTracking = false
-local plantTime = 0
-local growthDuration = 60  -- Mặc định 60 giây
-local elapsed = 0
-local lightningStrikeTime = nil
-local isHarvested = false
+local isCountingDown = false      -- Đang đếm ngược
+local startTime = 0               -- Thời điểm bắt đầu đếm
+local growthDuration = 60         -- Tổng thời gian (giây)
+local timeLeft = 60               -- Thời gian còn lại
+local isHarvested = false         -- Đã thu hoạch chưa
 local selectedTree = "Oak"
+local countingDownConnection = nil
 
 -- Danh sách cây và thời gian (giây)
 local TREE_DATA = {
@@ -36,7 +37,7 @@ local TREE_DATA = {
 local function createUI()
     -- ScreenGui
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "NTSetPrediction"
+    screenGui.Name = "NTSetCountdown"
     screenGui.Parent = Player:WaitForChild("PlayerGui")
     screenGui.ResetOnSpawn = false
 
@@ -80,7 +81,6 @@ local function createUI()
     titleLogin.Font = Enum.Font.GothamBold
     titleLogin.Parent = loginFrame
 
-    -- Dòng chữ phụ
     local subTitle = Instance.new("TextLabel")
     subTitle.Size = UDim2.new(1, 0, 0, 25)
     subTitle.Position = UDim2.new(0, 0, 0, 60)
@@ -122,7 +122,6 @@ local function createUI()
     local cornerBtn = Instance.new("UICorner")
     cornerBtn.CornerRadius = UDim.new(0, 10)
     cornerBtn.Parent = loginBtn
-    -- Hiệu ứng hover
     loginBtn.MouseEnter:Connect(function()
         TweenService:Create(loginBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 100, 220)}):Play()
     end)
@@ -150,7 +149,6 @@ local function createUI()
     mainFrame.BorderSizePixel = 0
     mainFrame.Visible = false
     mainFrame.Parent = background
-    -- Bo góc và shadow
     local mainCorner = Instance.new("UICorner")
     mainCorner.CornerRadius = UDim.new(0, 18)
     mainCorner.Parent = mainFrame
@@ -177,13 +175,13 @@ local function createUI()
     titleMain.Size = UDim2.new(0.7, 0, 1, 0)
     titleMain.Position = UDim2.new(0.05, 0, 0, 0)
     titleMain.BackgroundTransparency = 1
-    titleMain.Text = "🌩 DỰ BÁO SÉT PRO"
+    titleMain.Text = "⏳ ĐẾM NGƯỢC SÉT"
     titleMain.TextColor3 = Color3.fromRGB(255, 215, 0)
     titleMain.TextScaled = true
     titleMain.Font = Enum.Font.GothamBold
     titleMain.Parent = header
 
-    -- Nút đóng (thoát)
+    -- Nút đóng
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 40, 0, 40)
     closeBtn.Position = UDim2.new(0.92, 0, 0.1, 0)
@@ -223,7 +221,7 @@ local function createUI()
     treeLabel.Font = Enum.Font.GothamBold
     treeLabel.Parent = treePanel
 
-    -- Dropdown giả (dùng nút để chọn)
+    -- Dropdown
     local treeDropdown = Instance.new("TextButton")
     treeDropdown.Size = UDim2.new(0.3, 0, 0.6, 0)
     treeDropdown.Position = UDim2.new(0.25, 0, 0.2, 0)
@@ -238,7 +236,7 @@ local function createUI()
     dropCorner.CornerRadius = UDim.new(0, 8)
     dropCorner.Parent = treeDropdown
 
-    -- Nút tùy chỉnh thời gian
+    -- Nút tùy chỉnh
     local customTimeBtn = Instance.new("TextButton")
     customTimeBtn.Size = UDim2.new(0.2, 0, 0.6, 0)
     customTimeBtn.Position = UDim2.new(0.58, 0, 0.2, 0)
@@ -253,7 +251,7 @@ local function createUI()
     customCorner.CornerRadius = UDim.new(0, 8)
     customCorner.Parent = customTimeBtn
 
-    -- Ô nhập thời gian tùy chỉnh (ẩn)
+    -- Ô nhập thời gian
     local customTimeBox = Instance.new("TextBox")
     customTimeBox.Size = UDim2.new(0.15, 0, 0.6, 0)
     customTimeBox.Position = UDim2.new(0.8, 0, 0.2, 0)
@@ -270,32 +268,42 @@ local function createUI()
     customBoxCorner.CornerRadius = UDim.new(0, 8)
     customBoxCorner.Parent = customTimeBox
 
-    -- ============== THANH TIẾN TRÌNH ==============
-    local progressPanel = Instance.new("Frame")
-    progressPanel.Size = UDim2.new(1, -20, 0, 80)
-    progressPanel.Position = UDim2.new(0, 10, 0, 160)
-    progressPanel.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
-    progressPanel.BackgroundTransparency = 0.3
-    progressPanel.BorderSizePixel = 0
-    progressPanel.Parent = mainFrame
-    local progCorner = Instance.new("UICorner")
-    progCorner.CornerRadius = UDim.new(0, 12)
-    progCorner.Parent = progressPanel
+    -- ============== ĐỒNG HỒ ĐẾM NGƯỢC LỚN ==============
+    local clockFrame = Instance.new("Frame")
+    clockFrame.Size = UDim2.new(1, -20, 0, 100)
+    clockFrame.Position = UDim2.new(0, 10, 0, 160)
+    clockFrame.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
+    clockFrame.BackgroundTransparency = 0.3
+    clockFrame.BorderSizePixel = 0
+    clockFrame.Parent = mainFrame
+    local clockCorner = Instance.new("UICorner")
+    clockCorner.CornerRadius = UDim.new(0, 12)
+    clockCorner.Parent = clockFrame
 
-    -- Thanh nền
+    -- Thời gian còn lại (hiển thị số lớn)
+    local timeLeftLabel = Instance.new("TextLabel")
+    timeLeftLabel.Size = UDim2.new(1, 0, 0.7, 0)
+    timeLeftLabel.Position = UDim2.new(0, 0, 0, 5)
+    timeLeftLabel.BackgroundTransparency = 1
+    timeLeftLabel.Text = "60s"
+    timeLeftLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+    timeLeftLabel.TextScaled = true
+    timeLeftLabel.Font = Enum.Font.GothamBold
+    timeLeftLabel.Parent = clockFrame
+
+    -- Thanh tiến trình dạng vòng tròn hoặc thanh ngang bên dưới
     local progressBg = Instance.new("Frame")
-    progressBg.Size = UDim2.new(0.92, 0, 0.4, 0)
-    progressBg.Position = UDim2.new(0.04, 0, 0.15, 0)
+    progressBg.Size = UDim2.new(0.9, 0, 0.15, 0)
+    progressBg.Position = UDim2.new(0.05, 0, 0.8, 0)
     progressBg.BackgroundColor3 = Color3.fromRGB(60, 65, 80)
     progressBg.BorderSizePixel = 0
-    progressBg.Parent = progressPanel
+    progressBg.Parent = clockFrame
     local progBgCorner = Instance.new("UICorner")
     progBgCorner.CornerRadius = UDim.new(0, 10)
     progBgCorner.Parent = progressBg
 
-    -- Thanh tiến trình
     local progressBar = Instance.new("Frame")
-    progressBar.Size = UDim2.new(0, 0, 1, 0)
+    progressBar.Size = UDim2.new(1, 0, 1, 0) -- sẽ thay đổi theo thời gian
     progressBar.BackgroundColor3 = Color3.fromRGB(0, 200, 80)
     progressBar.BorderSizePixel = 0
     progressBar.Parent = progressBg
@@ -303,21 +311,10 @@ local function createUI()
     progBarCorner.CornerRadius = UDim.new(0, 10)
     progBarCorner.Parent = progressBar
 
-    -- Nhãn thời gian
-    local timeLabel = Instance.new("TextLabel")
-    timeLabel.Size = UDim2.new(1, 0, 0, 25)
-    timeLabel.Position = UDim2.new(0, 0, 0, 50)
-    timeLabel.BackgroundTransparency = 1
-    timeLabel.Text = "0s / 0s"
-    timeLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
-    timeLabel.TextScaled = true
-    timeLabel.Font = Enum.Font.Gotham
-    timeLabel.Parent = progressPanel
-
     -- ============== KHU VỰC CẢNH BÁO ==============
     local warningFrame = Instance.new("Frame")
     warningFrame.Size = UDim2.new(1, -20, 0, 60)
-    warningFrame.Position = UDim2.new(0, 10, 0, 255)
+    warningFrame.Position = UDim2.new(0, 10, 0, 275)
     warningFrame.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
     warningFrame.BackgroundTransparency = 0.3
     warningFrame.BorderSizePixel = 0
@@ -329,7 +326,7 @@ local function createUI()
     local warningLabel = Instance.new("TextLabel")
     warningLabel.Size = UDim2.new(1, 0, 1, 0)
     warningLabel.BackgroundTransparency = 1
-    warningLabel.Text = "✅ AN TOÀN"
+    warningLabel.Text = "✅ SẴN SÀNG"
     warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
     warningLabel.TextScaled = true
     warningLabel.Font = Enum.Font.GothamBold
@@ -338,7 +335,7 @@ local function createUI()
     -- ============== NÚT ĐIỀU KHIỂN ==============
     local controlPanel = Instance.new("Frame")
     controlPanel.Size = UDim2.new(1, -20, 0, 55)
-    controlPanel.Position = UDim2.new(0, 10, 0, 330)
+    controlPanel.Position = UDim2.new(0, 10, 0, 350)
     controlPanel.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
     controlPanel.BackgroundTransparency = 0.3
     controlPanel.BorderSizePixel = 0
@@ -347,13 +344,13 @@ local function createUI()
     ctrlCorner.CornerRadius = UDim.new(0, 12)
     ctrlCorner.Parent = controlPanel
 
-    -- Nút Bắt đầu
+    -- Nút Trồng (bắt đầu đếm ngược)
     local startBtn = Instance.new("TextButton")
     startBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
     startBtn.Position = UDim2.new(0.05, 0, 0.15, 0)
     startBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
     startBtn.BorderSizePixel = 0
-    startBtn.Text = "🌱 BẮT ĐẦU"
+    startBtn.Text = "🌱 TRỒNG"
     startBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     startBtn.TextScaled = true
     startBtn.Font = Enum.Font.GothamBold
@@ -368,7 +365,7 @@ local function createUI()
         TweenService:Create(startBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 180, 80)}):Play()
     end)
 
-    -- Nút Dừng / Reset
+    -- Nút Dừng (reset)
     local stopBtn = Instance.new("TextButton")
     stopBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
     stopBtn.Position = UDim2.new(0.38, 0, 0.15, 0)
@@ -413,9 +410,9 @@ local function createUI()
     -- ============== THÔNG TIN THÊM ==============
     local infoLabel = Instance.new("TextLabel")
     infoLabel.Size = UDim2.new(1, -20, 0, 30)
-    infoLabel.Position = UDim2.new(0, 10, 0, 400)
+    infoLabel.Position = UDim2.new(0, 10, 0, 420)
     infoLabel.BackgroundTransparency = 1
-    infoLabel.Text = "⏳ Sẵn sàng"
+    infoLabel.Text = "⏳ Chọn cây và nhấn TRỒNG để bắt đầu"
     infoLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
     infoLabel.TextScaled = true
     infoLabel.Font = Enum.Font.Gotham
@@ -431,14 +428,12 @@ local function createUI()
             loginFrame.Visible = false
             mainFrame.Visible = true
             errorLabel.Text = ""
-            -- Hiệu ứng mở menu
             mainFrame.BackgroundTransparency = 1
             TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
                 {BackgroundTransparency = 0.1}):Play()
         else
             errorLabel.Text = "❌ Key không hợp lệ! Vui lòng thử lại."
             errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            -- Rung lắc ô nhập
             TweenService:Create(keyBox, TweenInfo.new(0.1), {Position = UDim2.new(0.1, 5, 0, 100)}):Play()
             task.wait(0.1)
             TweenService:Create(keyBox, TweenInfo.new(0.1), {Position = UDim2.new(0.1, -5, 0, 100)}):Play()
@@ -447,7 +442,7 @@ local function createUI()
         end
     end)
 
-    -- Chọn cây từ dropdown (tạo popup đơn giản)
+    -- Chọn cây
     local treeOptions = {"Cây Sồi", "Cây Phong", "Cây Thông", "Cây Anh Đào", "Tùy chỉnh"}
     local treeKeys = {"Oak", "Maple", "Pine", "Cherry", "Custom"}
     local currentOptionIndex = 1
@@ -466,7 +461,9 @@ local function createUI()
             selectedTree = key
             growthDuration = TREE_DATA[key].time
         end
-        -- Cập nhật màu sắc thanh
+        timeLeft = growthDuration
+        timeLeftLabel.Text = timeLeft .. "s"
+        progressBar.Size = UDim2.new(1, 0, 1, 0)
         local treeColor = TREE_DATA[key] and TREE_DATA[key].color or Color3.fromRGB(0, 200, 80)
         progressBar.BackgroundColor3 = treeColor
     end)
@@ -481,8 +478,11 @@ local function createUI()
             local num = tonumber(customTimeBox.Text)
             if num and num > 0 then
                 growthDuration = num
+                timeLeft = num
                 selectedTree = "Custom"
                 treeDropdown.Text = "Tùy chỉnh"
+                timeLeftLabel.Text = timeLeft .. "s"
+                progressBar.Size = UDim2.new(1, 0, 1, 0)
                 progressBar.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
             end
         end
@@ -493,8 +493,11 @@ local function createUI()
             local num = tonumber(customTimeBox.Text)
             if num and num > 0 then
                 growthDuration = num
+                timeLeft = num
                 selectedTree = "Custom"
                 treeDropdown.Text = "Tùy chỉnh"
+                timeLeftLabel.Text = timeLeft .. "s"
+                progressBar.Size = UDim2.new(1, 0, 1, 0)
                 progressBar.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
                 customTimeBox.Visible = false
                 customTimeBtn.Text = "⏱ Tùy chỉnh"
@@ -505,153 +508,175 @@ local function createUI()
         end
     end)
 
-    -- ============== HÀM CẬP NHẬT UI ==============
-    local function updateTrackingUI()
-        if not isTracking then
-            progressBar.Size = UDim2.new(0, 0, 1, 0)
-            timeLabel.Text = "0s / " .. growthDuration .. "s"
-            warningLabel.Text = "✅ AN TOÀN"
+    -- ============== HÀM ĐẾM NGƯỢC ==============
+
+    -- Cập nhật UI khi đếm ngược
+    local function updateCountdownUI()
+        if not isCountingDown then
+            timeLeftLabel.Text = growthDuration .. "s"
+            progressBar.Size = UDim2.new(1, 0, 1, 0)
+            warningLabel.Text = "✅ SẴN SÀNG"
             warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-            infoLabel.Text = "⏳ Sẵn sàng"
+            infoLabel.Text = "⏳ Chọn cây và nhấn TRỒNG"
             return
         end
 
-        local now = os.clock()
-        elapsed = now - plantTime
+        local elapsed = os.clock() - startTime
         local remaining = math.max(0, growthDuration - elapsed)
-        local progress = math.min(1, elapsed / growthDuration)
+        timeLeft = math.ceil(remaining)
+        timeLeftLabel.Text = timeLeft .. "s"
 
-        -- Cập nhật thanh
+        -- Cập nhật thanh tiến trình (từ 1 về 0)
+        local progress = remaining / growthDuration
         progressBar.Size = UDim2.new(progress, 0, 1, 0)
 
-        -- Đổi màu theo mức độ nguy hiểm
-        if progress > 0.85 then
+        -- Đổi màu theo thời gian còn lại
+        if progress < 0.15 then
             progressBar.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-        elseif progress > 0.6 then
+            warningLabel.Text = "⚡ SÉP SẮP ĐÁNH! CHỈ CÒN " .. timeLeft .. "s!"
+            warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+            infoLabel.Text = "⚠️ CỰC KỲ NGUY HIỂM! THU HOẠCH NGAY!"
+        elseif progress < 0.4 then
             progressBar.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+            warningLabel.Text = "⚠️ CẨN THẬN! CÒN " .. timeLeft .. "s"
+            warningLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+            infoLabel.Text = "⚡ Sét sẽ đánh sau " .. timeLeft .. " giây nữa"
         else
             progressBar.BackgroundColor3 = TREE_DATA[selectedTree] and TREE_DATA[selectedTree].color or Color3.fromRGB(0, 200, 80)
-        end
-
-        -- Thời gian
-        timeLabel.Text = string.format("%ds / %ds", math.floor(elapsed), growthDuration)
-
-        -- Cảnh báo
-        if progress >= 1 then
-            warningLabel.Text = "🌳 CÂY ĐÃ CHÍN! THU HOẠCH NGAY!"
-            warningLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-            infoLabel.Text = "🔔 Cây đã sẵn sàng thu hoạch!"
-        elseif progress > 0.85 then
-            warningLabel.Text = "⚡ NGUY HIỂM! SÉT CÓ THỂ ĐÁNH BẤT CỨ LÚC NÀO!"
-            warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-            infoLabel.Text = "⚠️ Cảnh báo cực kỳ nguy hiểm! Hãy thu hoạch sớm!"
-        elseif progress > 0.6 then
-            warningLabel.Text = "⚠️ CẨN THẬN! SÉT CÓ THỂ ĐÁNH!"
-            warningLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
-            infoLabel.Text = "⚡ Khả năng sét đánh tăng cao"
-        else
-            warningLabel.Text = "✅ AN TOÀN - Cây đang phát triển"
+            warningLabel.Text = "🌱 Cây đang phát triển... " .. timeLeft .. "s"
             warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-            infoLabel.Text = "🌱 Đang phát triển, an toàn"
+            infoLabel.Text = "⏳ Còn " .. timeLeft .. " giây trước khi sét đánh"
         end
 
-        -- Cập nhật trạng thái cây
-        if progress >= 1 then
-            -- Nếu đã quá thời gian mà chưa thu hoạch thì cảnh báo đặc biệt
+        -- Nếu hết giờ -> sét đánh
+        if remaining <= 0 and isCountingDown and not isHarvested then
+            isCountingDown = false
+            lightningStrike()
         end
+    end
+
+    -- Sự kiện sét đánh
+    local function lightningStrike()
+        warningLabel.Text = "💥 SÉT ĐÁNH! CÂY ĐÃ BỊ HỎNG!"
+        warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+        timeLeftLabel.Text = "💀"
+        progressBar.Size = UDim2.new(0, 0, 1, 0)
+        progressBar.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        infoLabel.Text = "💀 Cây đã bị sét đánh! Bạn đã mất cây!"
+        isHarvested = true
+        isCountingDown = false
+        print("[Đếm ngược sét] Sét đánh sau đúng " .. growthDuration .. " giây")
+    end
+
+    -- Vòng lặp cập nhật UI liên tục
+    local function startCountdownLoop()
+        if countingDownConnection then
+            countingDownConnection:Disconnect()
+            countingDownConnection = nil
+        end
+        countingDownConnection = RunService.Heartbeat:Connect(function()
+            updateCountdownUI()
+        end)
     end
 
     -- ============== HÀM ĐIỀU KHIỂN ==============
 
-    -- Bắt đầu theo dõi
-    local function startTracking()
-        if isTracking then return end
-        -- Lấy thời gian hiện tại
-        plantTime = os.clock()
-        elapsed = 0
-        isTracking = true
+    -- Trồng cây (bắt đầu đếm ngược)
+    local function plantTree()
+        if isCountingDown then
+            infoLabel.Text = "⚠️ Đã có cây đang trồng!"
+            return
+        end
+        -- Reset trạng thái
         isHarvested = false
-        lightningStrikeTime = nil
-        infoLabel.Text = "🌱 Bắt đầu theo dõi cây..."
-
-        -- Cập nhật liên tục
-        spawn(function()
-            while isTracking do
-                updateTrackingUI()
-                task.wait(0.3)
-            end
-        end)
-    end
-
-    -- Dừng theo dõi (reset)
-    local function stopTracking()
-        isTracking = false
-        elapsed = 0
-        plantTime = 0
-        progressBar.Size = UDim2.new(0, 0, 1, 0)
-        timeLabel.Text = "0s / " .. growthDuration .. "s"
-        warningLabel.Text = "✅ AN TOÀN"
+        startTime = os.clock()
+        isCountingDown = true
+        infoLabel.Text = "🌱 Đã trồng cây! Sét sẽ đánh sau " .. growthDuration .. "s"
+        warningLabel.Text = "🌱 Cây đang phát triển..."
         warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-        infoLabel.Text = "⏳ Đã dừng"
+        timeLeft = growthDuration
+        timeLeftLabel.Text = timeLeft .. "s"
+        progressBar.Size = UDim2.new(1, 0, 1, 0)
+        -- Bắt đầu vòng lặp cập nhật
+        startCountdownLoop()
+        print("[Đếm ngược sét] Đã trồng cây, sét sẽ đánh sau " .. growthDuration .. " giây")
     end
 
-    -- Thu hoạch
+    -- Dừng (reset)
+    local function stopPlant()
+        isCountingDown = false
+        isHarvested = false
+        if countingDownConnection then
+            countingDownConnection:Disconnect()
+            countingDownConnection = nil
+        end
+        timeLeft = growthDuration
+        timeLeftLabel.Text = timeLeft .. "s"
+        progressBar.Size = UDim2.new(1, 0, 1, 0)
+        warningLabel.Text = "✅ ĐÃ DỪNG"
+        warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+        infoLabel.Text = "⏳ Đã dừng, nhấn TRỒNG để bắt đầu lại"
+        progressBar.BackgroundColor3 = TREE_DATA[selectedTree] and TREE_DATA[selectedTree].color or Color3.fromRGB(0, 200, 80)
+    end
+
+    -- Thu hoạch (nếu chưa bị sét đánh)
     local function harvest()
-        if isTracking and not isHarvested then
-            isHarvested = true
-            isTracking = false
-            local totalTime = os.clock() - plantTime
-            infoLabel.Text = "💰 Đã thu hoạch sau " .. string.format("%.1f", totalTime) .. " giây!"
-            warningLabel.Text = "💰 THU HOẠCH THÀNH CÔNG!"
-            warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-            progressBar.Size = UDim2.new(1, 0, 1, 0)
-            timeLabel.Text = string.format("%ds / %ds", math.floor(totalTime), growthDuration)
-        else
+        if isHarvested then
+            infoLabel.Text = "⚠️ Cây đã bị sét đánh hoặc đã thu hoạch!"
+            return
+        end
+        if not isCountingDown then
             infoLabel.Text = "⚠️ Chưa có cây để thu hoạch!"
+            return
         end
-    end
-
-    -- Mô phỏng sét đánh (gọi khi có sự kiện sét)
-    local function onLightningStrike()
-        if isTracking and not isHarvested then
-            isTracking = false
-            lightningStrikeTime = os.clock()
-            warningLabel.Text = "💥 SÉT ĐÁNH! CÂY ĐÃ BỊ HỎNG!"
-            warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-            infoLabel.Text = "💀 Cây đã bị sét đánh! Mất cây!"
-            progressBar.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-            print("[Dự báo sét] Cây bị sét đánh sau " .. string.format("%.1f", os.clock() - plantTime) .. " giây")
+        -- Thu hoạch thành công
+        isCountingDown = false
+        isHarvested = true
+        if countingDownConnection then
+            countingDownConnection:Disconnect()
+            countingDownConnection = nil
         end
+        local elapsed = os.clock() - startTime
+        warningLabel.Text = "💰 THU HOẠCH THÀNH CÔNG!"
+        warningLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+        timeLeftLabel.Text = "💰"
+        progressBar.Size = UDim2.new(0, 0, 1, 0)
+        progressBar.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+        infoLabel.Text = "💰 Đã thu hoạch sau " .. string.format("%.1f", elapsed) .. " giây"
+        print("[Đếm ngược sét] Thu hoạch thành công sau " .. string.format("%.1f", elapsed) .. " giây")
     end
 
     -- Gán nút
-    startBtn.MouseButton1Click:Connect(startTracking)
-    stopBtn.MouseButton1Click:Connect(stopTracking)
+    startBtn.MouseButton1Click:Connect(plantTree)
+    stopBtn.MouseButton1Click:Connect(stopPlant)
     harvestBtn.MouseButton1Click:Connect(harvest)
 
     -- ============== PHÍM TẮT ==============
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
-        if input.KeyCode == Enum.KeyCode.R then -- R để bắt đầu
-            startTracking()
+        if input.KeyCode == Enum.KeyCode.R then -- R để trồng
+            plantTree()
         elseif input.KeyCode == Enum.KeyCode.T then -- T để thu hoạch
             harvest()
+        elseif input.KeyCode == Enum.KeyCode.S then -- S để dừng
+            stopPlant()
         elseif input.KeyCode == Enum.KeyCode.Escape then -- ESC để đóng
             screenGui:Destroy()
         end
     end)
 
-    -- ============== TRẢ VỀ CÁC HÀM ==============
+    -- ============== TRẢ VỀ ==============
     return {
-        startTracking = startTracking,
-        stopTracking = stopTracking,
+        plantTree = plantTree,
+        stopPlant = stopPlant,
         harvest = harvest,
-        onLightningStrike = onLightningStrike,
         setGrowthTime = function(time)
             growthDuration = time
+            timeLeft = time
+            timeLeftLabel.Text = time .. "s"
         end,
         getStatus = function()
-            return isTracking, elapsed, growthDuration
+            return isCountingDown, timeLeft, growthDuration
         end
     }
 end
@@ -659,15 +684,11 @@ end
 -- ======================== KHỞI TẠO ===========================
 local ui = createUI()
 
--- In thông tin hướng dẫn
 print("========================================")
-print("  🌩 GREEDY GROWERS - DỰ BÁO SÉT PRO")
+print("  ⏳ GREEDY GROWERS - ĐẾM NGƯỢC SÉT")
 print("  Bản quyền NT TEAM")
 print("  Key mặc định: NT TEAM")
-print("  Phím tắt: R - Bắt đầu, T - Thu hoạch, ESC - Thoát")
+print("  Phím tắt: R - Trồng, T - Thu hoạch, S - Dừng, ESC - Thoát")
 print("========================================")
-
--- Có thể gọi các hàm này từ bên ngoài nếu cần
--- Ví dụ: ui.startTracking(), ui.harvest(), ui.onLightningStrike()
 
 -- ======================== KẾT THÚC ===========================
